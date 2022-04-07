@@ -1,0 +1,9 @@
+Parameter,Value
+Project name,test
+High voltage,0.5
+Low voltage,0.4
+Start voltage,0.4
+End voltage,0.5
+Scan rate,0.05
+Segment,2
+Current sensitivity,0.0001
