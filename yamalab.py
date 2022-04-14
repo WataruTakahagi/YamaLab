@@ -1,11 +1,27 @@
+# -*- coding: utf-8 -*-
 import os
 import openpyxl
 from openpyxl import Workbook
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.ticker as ticker
+from matplotlib.ticker import ScalarFormatter
 import time
 import pandas as pd
 from pymeasure.instruments.keithley import Keithley2400
 from datetime import datetime
 import sys
+
+plt.rcParams['font.family']= 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['arial']
+plt.rcParams['font.size'] = 12
+plt.rcParams['font.weight'] = 'semibold'
+plt.rcParams['xtick.direction'] = 'out'
+plt.rcParams['ytick.direction'] = 'out'
+plt.rcParams['xtick.major.width'] = 1.0
+plt.rcParams['ytick.major.width'] = 1.0
+plt.rcParams['axes.linewidth'] = 1.0
+plt.rcParams['axes.axisbelow'] = True
 
 def duplicate_rename(file_path):
     if os.path.exists(file_path):
@@ -75,26 +91,40 @@ class cyclic_voltammetry():
         for i in range(self.segments):
             step = 0
             for step in range (points):
-                keithley.source_voltage = voltage
-                rest_measurement = time.time() - base_time - meas_time
+                #keithley.source_voltage = voltage
+                rest_measurement = time.time() - self.base_time - meas_time
                 while rest_measurement < 0: # 電流反転予定の時間が来るまで待つ。
-                    rest_measurement = time.time() - base_time - meas_time
+                    rest_measurement = time.time() - self.base_time - meas_time
                     time.sleep(time_accuracy)
-                self.z.append(time.time()-base_time) #時間記録
+                self.z.append(time.time()-self.base_time) #時間記録
                 self.x.append(voltage) # 電圧記録
-                self.y.append(keithley.current) # 電流記録(A)
+                #self.y.append(keithley.current) # 電流記録(A)
                 voltage = voltage + dV # 印可電圧の変更（反映されるのは次のループから）
                 meas_time = meas_time + measurement_interval # 次の測定点を設定
+                print(meas_time,voltage,'current')
             dV = dV*(-1) # 掃引方向を変更
-        self.keithley.shutdown()
+        #self.keithley.shutdown()
 
         # エクセルにデータ記入。リストに一旦入れた値をエクセルへ。
         #この方法が毎度毎度エクセルに記録するよりも速いのかは未検証。
-        for i in range(segments * points):
+        for i in range(self.segments * points):
             self.sheet.cell(row = 2+i, column = 1).value = self.x[i]
-            self.sheet.cell(row = 2+i, column = 2).value = self.y[i]*1000 # 電流をmA単位で記入する。
+            #self.sheet.cell(row = 2+i, column = 2).value = self.y[i]*1000 # 電流をmA単位で記入する。
             self.sheet.cell(row = 2+i, column = 3).value = self.z[i]
         print('voltage_apply_done.')
+
+    def cv_plot(self):
+        fig = plt.figure(figsize =(4,3))
+        ax = plt.subplot(111)
+        plt.plot(self.z,self.x,color='black')
+        plt.grid(which='major',color='white',linestyle='--')
+        plt.grid(which='minor',color='white',linestyle='--')
+        ax.set_facecolor('whitesmoke')
+        plt.xlabel(r'$\mathsf{t\ /\ s}$')
+        plt.ylabel(r'$\mathsf{E\ /\ V}$')
+        plt.tight_layout()
+        plt.savefig('voltage.pdf')
+        plt.close()
 
     def run(self):
         print(self.setting)
@@ -107,11 +137,16 @@ class cyclic_voltammetry():
             print('System: closed')
             sys.exit()
 
-        self.initial_settings()
-        self.keithley.enable_source()# なぜかここでもoutputをenableしないとoutputがenableにならない
+        #self.initial_settings()
+        #self.keithley.enable_source()# なぜかここでもoutputをenableしないとoutputがenableにならない
         print('System: enable')
-        base_time = time.time() # 測定において0秒となる時刻を取得
+        self.base_time = time.time() # 測定において0秒となる時刻を取得
         self.voltage_apply(self.start_V)
         print('System:',self.filename)
         self.book.save(self.path + self.filename) # エクセルファイルを filename の名前で、path の場所に保存。
+        self.cv_plot()
         print('System: finished')
+
+class thermocell():
+    #thermocell measurement
+    pass
